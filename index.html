@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Handout Generator - 讲义生成器</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0F172A;
+      color: #F8FAFC;
+      line-height: 1.6;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      height: 100vh;
+      gap: 0;
+    }
+
+    .input-panel {
+      background: #1E293B;
+      border-right: 1px solid #334155;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-header {
+      padding: 24px;
+      border-bottom: 1px solid #334155;
+    }
+
+    .input-header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .input-header p {
+      font-size: 13px;
+      color: #94A3B8;
+      line-height: 1.5;
+    }
+
+    .input-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    textarea {
+      flex: 1;
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #F8FAFC;
+      padding: 16px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea::placeholder {
+      color: #475569;
+    }
+
+    textarea:focus {
+      border-color: #38BDF8;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    button {
+      padding: 11px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: -0.2px;
+    }
+
+    .btn-generate {
+      background: linear-gradient(135deg, #38BDF8 0%, #22D3EE 100%);
+      color: #0F172A;
+    }
+
+    .btn-generate:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.4);
+    }
+
+    .btn-download {
+      background: #F97316;
+      color: #FFF;
+    }
+
+    .btn-download:hover {
+      background: #EA580C;
+      transform: translateY(-1px);
+    }
+
+    .btn-download:disabled {
+      background: #334155;
+      color: #64748B;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .example-link {
+      margin-top: 16px;
+      color: #38BDF8;
+      text-decoration: none;
+      font-size: 13px;
+      text-align: center;
+      display: block;
+      padding: 8px;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .example-link:hover {
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .preview-panel {
+      background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf3 100%);
+      overflow: auto;
+    }
+
+    #preview {
+      min-height: 100%;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #94A3B8;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .empty-state svg {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 20px;
+      opacity: 0.4;
+    }
+
+    .empty-state p {
+      font-size: 15px;
+      color: #64748B;
+    }
+
+    /* ==================== HANDOUT TEMPLATE STYLES ==================== */
+    .handout {
+      max-width: 860px;
+      margin: 0 auto;
+      background: white;
+      min-height: 100vh;
+    }
+
+    :root {
+      --primary: #FF6B6B;
+      --primary-light: #FFE8E8;
+      --secondary: #4ECDC4;
+      --secondary-light: #E0F7F5;
+      --accent: #FFE66D;
+      --accent-light: #FFF8DD;
+      --purple: #A78BFA;
+      --purple-light: #F3EFFF;
+      --orange: #FF9F43;
+      --orange-light: #FFF0E0;
+      --indigo: #6C5CE7;
+      --indigo-light: #EEE9FE;
+      --dark: #2D3436;
+      --gray: #636E72;
+      --light-gray: #F5F6FA;
+      --white: #FFFFFF;
+      --shadow: 0 4px 20px rgba(0,0,0,0.08);
+      --shadow-hover: 0 8px 30px rgba(0,0,0,0.12);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    .handout * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .handout-body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+      color: var(--dark);
+      line-height: 1.7;
+    }
+
+    /* Hero Header */
+    .hero {
+      background: linear-gradient(135deg, #6C5CE7 0%, #A78BFA 50%, #4ECDC4 100%);
+      padding: 60px 24px 50px;
+      text-align: center;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf3 100%);
+      border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    }
+
+    .hero h1 {
+      font-size: 2.2em;
+      font-weight: 800;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.15);
+      letter-spacing: -0.5px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero .subtitle {
+      font-size: 1.1em;
+      opacity: 0.95;
+      font-weight: 500;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero .badges {
+      margin-top: 18px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero .badge {
+      background: rgba(255,255,255,0.25);
+      border: 1.5px solid rgba(255,255,255,0.5);
+      padding: 6px 16px;
+      border-radius: 50px;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      padding: 10px 24px;
+    }
+
+    .progress-nav {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .progress-nav a {
+      text-decoration: none;
+      font-size: 0.82em;
+      font-weight: 600;
+      color: var(--gray);
+      padding: 6px 14px;
+      border-radius: 50px;
+      background: var(--light-gray);
+      transition: all 0.25s;
+      white-space: nowrap;
+    }
+
+    .progress-nav a:hover {
+      color: var(--indigo);
+      background: var(--indigo-light);
+      transform: translateY(-1px);
+    }
+
+    /* Main Container */
+    .handout-container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    /* Section */
+    .section {
+      margin-bottom: 48px;
+      scroll-margin-top: 64px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .section-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 20px;
+    }
+
+    .section-icon.reading { background: var(--primary-light); }
+    .section-icon.analysis { background: var(--secondary-light); }
+    .section-icon.tasks { background: var(--purple-light); }
+
+    .section-title {
+      font-size: 1.5em;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .section-subtitle {
+      font-size: 0.9em;
+      color: var(--gray);
+      font-weight: 500;
+    }
+
+    /* Cards */
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 20px;
+      transition: box-shadow 0.3s;
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-hover);
+    }
+
+    /* Reading */
+    .story-text {
+      font-size: 1.05em;
+      line-height: 1.9;
+      color: #444;
+    }
+
+    .story-text p {
+      margin-bottom: 14px;
+    }
+
+    /* Analysis */
+    .analysis-block {
+      margin-bottom: 28px;
+    }
+
+    .analysis-block h3 {
+      font-size: 1.15em;
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .analysis-block h3::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: var(--secondary);
+      border-radius: 2px;
+    }
+
+    .analysis-block p {
+      color: #444;
+      line-height: 1.8;
+      font-size: 0.98em;
+    }
+
+    /* Task Cards */
+    .task-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 24px;
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .task-header {
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .task-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3em;
+      font-weight: 800;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .task-1 .task-number { background: linear-gradient(135deg, #FF6B6B, #FF8E8E); }
+    .task-2 .task-number { background: linear-gradient(135deg, #4ECDC4, #6FE4DC); }
+    .task-3 .task-number { background: linear-gradient(135deg, #FF9F43, #FFB76B); }
+    .task-4 .task-number { background: linear-gradient(135deg, #A78BFA, #C4B1FA); }
+    .task-5 .task-number { background: linear-gradient(135deg, #6C5CE7, #9C88FF); }
+
+    .task-title {
+      font-size: 1.15em;
+      font-weight: 700;
+    }
+
+    .task-body {
+      padding: 0 24px 24px;
+    }
+
+    .task-description {
+      margin-bottom: 20px;
+      color: #555;
+      line-height: 1.7;
+    }
+
+    /* Practice Levels */
+    .levels-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .level-item {
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      border: 1px solid;
+    }
+
+    .level-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .level-tag {
+      font-size: 0.72em;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 50px;
+      white-space: nowrap;
+      color: white;
+    }
+
+    .level-1 { background: #F0FBF4; border-color: #BBF7D0; }
+    .level-1 .level-tag { background: #22C55E; }
+    .level-2 { background: #EFF6FF; border-color: #BFDBFE; }
+    .level-2 .level-tag { background: #3B82F6; }
+    .level-3 { background: #FFF7ED; border-color: #FED7AA; }
+    .level-3 .level-tag { background: #F97316; }
+    .level-4 { background: #FAF5FF; border-color: #DDD6FE; }
+    .level-4 .level-tag { background: #8B5CF6; }
+
+    .level-label {
+      font-weight: 700;
+      font-size: 0.9em;
+      color: #555;
+    }
+
+    .level-content {
+      font-size: 0.92em;
+      color: #444;
+      line-height: 1.7;
+    }
+
+    @media print {
+      body { background: white; }
+      .container { display: block; }
+      .input-panel { display: none; }
+      .preview-panel { box-shadow: none; background: white; }
+      .handout { box-shadow: none; }
+      .task-card, .card { page-break-inside: avoid; }
+      .progress-container { position: relative; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="input-panel">
+      <div class="input-header">
+        <h1>📝 讲义生成器</h1>
+        <p>粘贴 Markdown 内容，生成 Bookstore 风格专业讲义</p>
+      </div>
+      <div class="input-body">
+        <textarea id="markdown-input" placeholder="# 讲义标题
+
+## Reading
+阅读材料正文...
+
+## Analysis
+### 段落1标题
+分析内容...
+
+## Task 1: 任务名称
+任务说明
+
+### Practice A: 基础练习
+练习内容...
+
+### Practice B: 进阶练习
+练习内容...
+
+### Practice C: 综合练习
+练习内容...
+
+### Practice D: 创意练习
+练习内容..."></textarea>
+        <div class="buttons">
+          <button class="btn-generate" onclick="generateHandout()">生成讲义</button>
+          <button class="btn-download" id="download-btn" onclick="downloadHTML()" disabled>下载 HTML</button>
+        </div>
+        <a href="#" class="example-link" onclick="loadExample(); return false;">📖 加载示例文档</a>
+      </div>
+    </div>
+    <div class="preview-panel">
+      <div id="preview">
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          <p>在左侧输入 Markdown 后点击「生成讲义」</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+    let generatedHTML = '';
+
+    function parseMarkdown(md) {
+      const lines = md.split('\n');
+      const doc = { title: '', subtitle: '', reading: [], analysis: [], tasks: [] };
+      let currentSection = null;
+      let currentTask = null;
+      let currentPractice = null;
+      let buffer = [];
+
+      function flushBuffer() {
+        const text = buffer.join('\n').trim();
+        buffer = [];
+        return text;
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        if (line.startsWith('# ')) {
+          doc.title = line.slice(2).trim();
+          continue;
+        }
+
+        if (line.startsWith('## ')) {
+          if (currentPractice) { currentPractice.content = flushBuffer(); }
+          else if (currentTask) { currentTask.description = flushBuffer(); }
+          else if (currentSection === 'reading') { doc.reading.push(flushBuffer()); }
+          else if (currentSection === 'analysis' && doc.analysis.length > 0) {
+            doc.analysis[doc.analysis.length - 1].content = flushBuffer();
+          }
+
+          const heading = line.slice(3).trim();
+          if (heading.toLowerCase() === 'reading') {
+            currentSection = 'reading';
+            currentTask = null;
+            currentPractice = null;
+          } else if (heading.toLowerCase() === 'analysis') {
+            currentSection = 'analysis';
+            currentTask = null;
+            currentPractice = null;
+          } else if (heading.toLowerCase().startsWith('task')) {
+            currentSection = 'tasks';
+            currentTask = { title: heading, description: '', practices: [] };
+            currentPractice = null;
+            doc.tasks.push(currentTask);
+          }
+          continue;
+        }
+
+        if (line.startsWith('### ')) {
+          if (currentPractice) { currentPractice.content = flushBuffer(); }
+          else if (currentTask && currentSection === 'tasks') {
+            currentTask.description = flushBuffer();
+          } else if (currentSection === 'analysis' && doc.analysis.length > 0) {
+            doc.analysis[doc.analysis.length - 1].content = flushBuffer();
+          }
+
+          const heading = line.slice(4).trim();
+          if (currentSection === 'analysis') {
+            doc.analysis.push({ title: heading, content: '' });
+            currentPractice = null;
+          } else if (currentSection === 'tasks' && currentTask) {
+            currentPractice = { label: heading, content: '' };
+            currentTask.practices.push(currentPractice);
+          }
+          continue;
+        }
+
+        buffer.push(line);
+      }
+
+      // flush final buffer
+      if (currentPractice) { currentPractice.content = flushBuffer(); }
+      else if (currentTask) { currentTask.description = flushBuffer(); }
+      else if (currentSection === 'reading') { doc.reading.push(flushBuffer()); }
+      else if (currentSection === 'analysis' && doc.analysis.length > 0) {
+        doc.analysis[doc.analysis.length - 1].content = flushBuffer();
+      }
+
+      return doc;
+    }
+
+    function renderReading(paragraphs) {
+      const content = paragraphs.map(p => marked.parse(p)).join('');
+      return `<div class="card">
+        <div class="story-text">${content}</div>
+      </div>`;
+    }
+
+    function renderAnalysis(blocks) {
+      const content = blocks.map(b => `
+        <div class="analysis-block">
+          <h3>${b.title}</h3>
+          ${marked.parse(b.content)}
+        </div>`).join('');
+      return `<div class="card">${content}</div>`;
+    }
+
+    function renderTasks(tasks) {
+      return tasks.map((task, idx) => {
+        const num = idx + 1;
+        const practices = task.practices.map((p, pIdx) => {
+          const level = pIdx + 1;
+          const levelLabels = ['Practice A', 'Practice B', 'Practice C', 'Practice D'];
+          const label = p.label.includes(':') ? p.label.split(':')[1].trim() : levelLabels[pIdx] || p.label;
+
+          return `
+          <div class="level-item level-${level}">
+            <div class="level-header">
+              <span class="level-tag">${String.fromCharCode(65 + pIdx)}</span>
+              <span class="level-label">${label}</span>
+            </div>
+            <div class="level-content">${marked.parse(p.content)}</div>
+          </div>`;
+        }).join('');
+
+        return `
+        <div class="task-card task-${num}">
+          <div class="task-header">
+            <div class="task-number">${num}</div>
+            <div class="task-title">${task.title}</div>
+          </div>
+          <div class="task-body">
+            ${task.description ? `<div class="task-description">${marked.parse(task.description)}</div>` : ''}
+            ${practices ? `<div class="levels-container">${practices}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function buildHandoutHTML(doc) {
+      const navLinks = [];
+      if (doc.reading.length) navLinks.push('Reading');
+      if (doc.analysis.length) navLinks.push('Analysis');
+      doc.tasks.forEach((_, i) => navLinks.push(`Task ${i + 1}`));
+
+      const navHTML = navLinks.map(n => `<a href="#">${n}</a>`).join('');
+
+      return `<div class="handout">
+        <div class="hero">
+          <h1>${doc.title || '讲义标题'}</h1>
+          <div class="subtitle">Reading & Writing Practice</div>
+          <div class="badges">
+            <span class="badge">📖 Reading</span>
+            <span class="badge">✏️ Writing</span>
+            <span class="badge">🎯 Practice</span>
+          </div>
+        </div>
+        <div class="progress-container">
+          <nav class="progress-nav">${navHTML}</nav>
+        </div>
+        <div class="handout-container">
+          ${doc.reading.length ? `
+          <div class="section">
+            <div class="section-header">
+              <div class="section-icon reading">📖</div>
+              <div>
+                <div class="section-title">Reading</div>
+                <div class="section-subtitle">阅读材料</div>
+              </div>
+            </div>
+            ${renderReading(doc.reading)}
+          </div>` : ''}
+          ${doc.analysis.length ? `
+          <div class="section">
+            <div class="section-header">
+              <div class="section-icon analysis">🔍</div>
+              <div>
+                <div class="section-title">Analysis</div>
+                <div class="section-subtitle">文本分析</div>
+              </div>
+            </div>
+            ${renderAnalysis(doc.analysis)}
+          </div>` : ''}
+          ${doc.tasks.length ? `
+          <div class="section">
+            <div class="section-header">
+              <div class="section-icon tasks">✨</div>
+              <div>
+                <div class="section-title">Training Tasks</div>
+                <div class="section-subtitle">写作训练</div>
+              </div>
+            </div>
+            ${renderTasks(doc.tasks)}
+          </div>` : ''}
+        </div>
+      </div>`;
+    }
+
+    function generateHandout() {
+      const md = document.getElementById('markdown-input').value.trim();
+      if (!md) return;
+      const doc = parseMarkdown(md);
+      const html = buildHandoutHTML(doc);
+      document.getElementById('preview').innerHTML = html;
+      document.getElementById('download-btn').disabled = false;
+      generatedHTML = html;
+    }
+
+    function downloadHTML() {
+      const md = document.getElementById('markdown-input').value.trim();
+      const doc = parseMarkdown(md);
+      const title = doc.title || 'handout';
+      const styles = document.querySelector('style').textContent;
+      const fullHTML = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title}</title>
+<style>
+${styles.split('/* ==================== HANDOUT TEMPLATE STYLES ====================')[1] || styles}
+body { background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf3 100%); margin: 0; padding: 20px 0; min-height: 100vh; }
+.handout { box-shadow: 0 8px 40px rgba(0,0,0,0.12); }
+</style>
+</head>
+<body>
+${generatedHTML}
+</body>
+</html>`;
+      const blob = new Blob([fullHTML], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = title.replace(/\s+/g, '-') + '.html';
+      a.click();
+    }
+
+    function loadExample() {
+      document.getElementById('markdown-input').value = `# The Bookstore: A Cultural Hub
+
+## Reading
+The bookstore has long been considered more than a mere retail space. For generations, these quiet havens have served as cultural anchors in their communities, providing not only books but also a sense of belonging.
+
+In recent years, independent bookstores have faced tremendous pressure from online retailers. Yet surprisingly, many have thrived by reinventing themselves as community spaces, hosting author events, book clubs, and even coffee bars.
+
+The transformation speaks to a deeper human need. People don't just want books—they want connection, discovery, and the serendipity of browsing physical shelves. A good bookstore curator knows this, arranging titles not by algorithm but by intuition and taste.
+
+## Analysis
+### Narrative Function
+The opening paragraph establishes the bookstore as a symbol, not just a location. Notice how the writer uses elevated language—"cultural anchors," "quiet havens"—to build an emotional frame before introducing the conflict.
+
+### Contrast Structure
+Paragraph two follows a classic contrast pattern: problem → unexpected outcome. This structure signals to the reader that the essay will argue against simple assumptions.
+
+### Human Connection Theme
+The final paragraph shifts from economic analysis to psychology. By naming "serendipity" and "intuition," the writer positions bookstores as defenders of human judgment against algorithmic optimization.
+
+## Task 1: Topic Sentence Identification
+Identify the topic sentence in each paragraph and explain how it controls the development of ideas.
+
+### Practice A: Recognition
+Underline the topic sentence in Paragraph 1. What key idea does it introduce?
+
+### Practice B: Analysis
+How does the topic sentence of Paragraph 2 signal a contrast? What word is the key signal?
+
+### Practice C: Comparison
+Compare the two topic sentences. What do they have in common structurally?
+
+### Practice D: Writing
+Write your own topic sentence for a paragraph about libraries in the digital age.
+
+## Task 2: Vocabulary in Context
+Explore how word choice creates tone and meaning in the passage.
+
+### Practice A: Connotation
+List three words from the passage that carry positive connotations. What effect do they create?
+
+### Practice B: Substitution
+Replace "havens" with two alternative words. How does the meaning change?
+
+### Practice C: Register
+Is the passage formal or informal? Find three pieces of evidence.
+
+### Practice D: Application
+Use two vocabulary items from the passage in original sentences about a place you know.
+
+## Task 3: Argumentative Structure
+Analyze how the essay builds its argument across the three paragraphs.
+
+### Practice A: Claim Identification
+What is the essay's main claim? Where does it appear most clearly?
+
+### Practice B: Evidence Types
+What types of evidence does the writer use? (Anecdote, data, expert opinion, logical reasoning)
+
+### Practice C: Concession and Rebuttal
+Does the essay acknowledge counterarguments? If so, where and how?
+
+### Practice D: Writing
+Draft a fourth paragraph that extends the argument in a new direction.`;
+      generateHandout();
+    }
+  </script>
+</body>
+</html>
