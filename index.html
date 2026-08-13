@@ -564,6 +564,7 @@
           <button class="btn-download" id="download-btn" onclick="downloadHTML()" disabled>下载 HTML</button>
         </div>
         <a href="#" class="example-link" onclick="loadExample(); return false;">📖 加载示例文档</a>
+        <a href="#" class="example-link" onclick="downloadTemplate(); return false;">📥 下载模板</a>
       </div>
     </div>
     <div class="preview-panel">
@@ -805,6 +806,52 @@ ${generatedHTML}
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = title.replace(/\s+/g, '-') + '.html';
+      a.click();
+    }
+
+    function downloadTemplate() {
+      const templateContent = `# 讲义标题
+
+## Reading
+正文内容...
+
+可以写多个段落。
+
+## Analysis
+### 小标题1
+分析内容...
+
+### 小标题2
+更多分析...
+
+## Task 1: 任务名称
+任务说明文字
+
+### Practice A: 基础练习
+练习内容...
+
+### Practice B: 进阶练习
+练习内容...
+
+### Practice C: 综合练习
+练习内容...
+
+### Practice D: 创意练习
+练习内容...
+
+## Task 2: 另一个任务
+任务说明
+
+### Practice A: 基础
+内容...
+
+### Practice B: 进阶
+内容...`;
+
+      const blob = new Blob([templateContent], { type: 'text/markdown;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'template.md';
       a.click();
     }
 
